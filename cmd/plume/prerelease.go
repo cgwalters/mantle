@@ -359,6 +359,8 @@ func azurePreRelease(ctx context.Context, client *http.Client, src *storage.Buck
 	return nil
 }
 
+const containerLinuxDiskSize = 8 // In GB. This used to be hardcoded in ore.
+
 func awsUploadToPartition(spec *channelSpec, part *awsPartitionSpec, imageName, imageDescription, imagePath string) (map[string]string, map[string]string, error) {
 	plog.Printf("Connecting to %v...", part.Name)
 	api, err := aws.New(&aws.Options{
@@ -407,12 +409,12 @@ func awsUploadToPartition(spec *channelSpec, part *awsPartitionSpec, imageName, 
 
 	plog.Printf("Creating AMIs from %v...", snapshot.SnapshotID)
 
-	hvmImageID, err := api.CreateHVMImage(snapshot.SnapshotID, imageName+"-hvm", imageDescription+" (HVM)")
+	hvmImageID, err := api.CreateHVMImage(snapshot.SnapshotID, imageName+"-hvm", containerLinuxDiskSize, imageDescription+" (HVM)")
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to create HVM image: %v", err)
 	}
 
-	pvImageID, err := api.CreatePVImage(snapshot.SnapshotID, imageName, imageDescription+" (PV)")
+	pvImageID, err := api.CreatePVImage(snapshot.SnapshotID, imageName, containerLinuxDiskSize, imageDescription+" (PV)")
 	if err != nil {
 		return nil, nil, fmt.Errorf("unable to create PV image: %v", err)
 	}
