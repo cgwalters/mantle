@@ -35,6 +35,7 @@ import (
 	"github.com/coreos/mantle/fcos"
 	"github.com/coreos/mantle/kola"
 	"github.com/coreos/mantle/kola/register"
+	"github.com/coreos/mantle/platform"
 	"github.com/coreos/mantle/sdk"
 	"github.com/coreos/mantle/util"
 
@@ -74,6 +75,15 @@ will be ignored.
 		SilenceUsage: true,
 	}
 
+	cmdRunExt = &cobra.Command{
+		Use:          "run-ext DIR",
+		Short:        "Run externally defined test",
+		Long:         `Run externally defined test`,
+		RunE:         runRunExt,
+		PreRunE:      preRunExt,
+		SilenceUsage: true,
+	}
+
 	cmdList = &cobra.Command{
 		Use:   "list",
 		Short: "List kola test names",
@@ -99,6 +109,7 @@ This can be useful for e.g. serving locally built OSTree repos to qemu.
 
 func init() {
 	root.AddCommand(cmdRun)
+	root.AddCommand(cmdRunExt)
 
 	root.AddCommand(cmdList)
 	cmdList.Flags().BoolVar(&listJSON, "json", false, "format output in JSON")
@@ -547,4 +558,45 @@ func runRunUpgrade(cmd *cobra.Command, args []string) error {
 	}
 
 	return runErr
+}
+
+func preRunExt(cmd *cobra.Command, args []string) error {
+	return nil
+}
+
+func runRunExt(cmd *cobra.Command, args []string) error {
+	var err error
+	outputDir, err = kola.SetupOutputDir(outputDir, kolaPlatform)
+	if err != nil {
+		return err
+	}
+
+	flight, err := kola.NewFlight(kolaPlatform)
+	if err != nil {
+		return err
+	}
+	defer flight.Destroy()
+
+	cluster, err := flight.NewCluster(&platform.RuntimeConfig{
+		OutputDir: outputDir,
+	})
+	if err != nil {
+		return err
+	}
+	defer cluster.Destroy()
+
+	m, err := cluster.NewMachine(nil)
+	if err != nil {
+		return err
+	}
+	defer m.Destroy()
+
+	_, _, err = m.SSH("echo hello world")
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("ok!")
+
+	return nil
 }
